@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paper RAG — Knowledge Base</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Sidebar -->
+        <nav id="sidebar">
+            <div class="logo">
+                <h2>📚 Paper RAG</h2>
+            </div>
+            <div class="nav-links">
+                <a href="#" class="nav-item active" data-view="search">🔍 Search & Ask</a>
+                <a href="#" class="nav-item" data-view="library">📖 Library</a>
+                <a href="#" class="nav-item" data-view="upload">⬆️ Add Paper</a>
+                <a href="#" class="nav-item" data-view="status">📊 Index Status</a>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main id="main">
+            <!-- Search & Ask View -->
+            <section id="view-search" class="view active">
+                <div class="search-box">
+                    <input type="text" id="search-input" placeholder="Search papers or ask a question...">
+                    <button id="search-btn">Search</button>
+                    <button id="ask-btn" class="ask">Ask AI</button>
+                </div>
+                <div class="search-options">
+                    <select id="section-filter">
+                        <option value="">All sections</option>
+                        <option value="abstract">Abstract</option>
+                        <option value="introduction">Introduction</option>
+                        <option value="methods">Methods</option>
+                        <option value="results">Results</option>
+                        <option value="discussion">Discussion</option>
+                        <option value="conclusion">Conclusion</option>
+                    </select>
+                    <label>Top-K: <input type="number" id="top-k" value="10" min="1" max="50" style="width:60px"></label>
+                </div>
+                <div id="search-results"></div>
+                <div id="ask-answer" class="answer-box" style="display:none;">
+                    <h3>AI Answer</h3>
+                    <div id="answer-content"></div>
+                    <div id="answer-sources"></div>
+                </div>
+            </section>
+
+            <!-- Library View -->
+            <section id="view-library" class="view">
+                <div class="toolbar">
+                    <input type="text" id="lib-search" placeholder="Filter papers...">
+                    <button id="lib-refresh">🔄 Refresh</button>
+                </div>
+                <div class="pagination" id="lib-pagination"></div>
+                <table id="papers-table">
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>Authors</th>
+                            <th>Year</th>
+                            <th>Tags</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+                <div class="pagination" id="lib-pagination-bottom"></div>
+            </section>
+
+            <!-- Upload View -->
+            <section id="view-upload" class="view">
+                <div class="upload-area" id="upload-drop">
+                    <p>📄 Drop PDF/DOCX/MD file here or click to select</p>
+                    <input type="file" id="file-input" accept=".pdf,.docx,.md,.txt" hidden>
+                    <button id="upload-btn">Select File</button>
+                </div>
+                <div class="upload-options">
+                    <h4>Marker Options</h4>
+                    <label><input type="checkbox" id="opt-force-ocr"> Force OCR (slow, for scanned PDFs)</label>
+                    <label><input type="checkbox" id="opt-use-llm"> LLM boost (better tables/equations)</label>
+                    <label><input type="checkbox" id="opt-no-images"> Skip image extraction (faster)</label>
+                    <label>Page range (e.g. "0,5-10"): <input type="text" id="opt-page-range" placeholder="all pages" style="width:140px"></label>
+                </div>
+                <div id="upload-status"></div>
+                <div id="upload-progress" style="display:none;">
+                    <div class="progress-bar"><div class="progress-fill"></div></div>
+                    <p>Indexing paper... this may take a minute.</p>
+                </div>
+            </section>
+
+            <!-- Status View -->
+            <section id="view-status" class="view">
+                <div class="status-card">
+                    <h3>Index Status</h3>
+                    <div id="status-content">Loading...</div>
+                </div>
+                <button id="rebuild-btn" class="danger">⚠️ Rebuild Entire Index</button>
+            </section>
+        </main>
+    </div>
+    <script src="/static/app.js"></script>
+</body>
+</html>
