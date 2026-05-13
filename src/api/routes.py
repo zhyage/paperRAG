@@ -91,7 +91,7 @@ async def upload_paper(
 
             meta = extract_metadata_from_markdown(Path(result["parsed_md"]))
             paper_id = result["file_id"]
-            add_paper({
+            db_add_paper({
                 "file_id": paper_id,
                 **meta,
                 "parsed_path": str(result["parsed_md"]),
