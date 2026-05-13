@@ -77,7 +77,10 @@ async def upload_paper(
     results = []
     for file in files:
         try:
+            # 保存上传文件
             dest_path = await copy_upload_to_papers(file)
+
+            # 用 Marker 解析
             result = await convert_paper(
                 dest_path,
                 force_ocr=force_ocr,
@@ -85,53 +88,64 @@ async def upload_paper(
                 page_range=page_range if page_range else None,
                 disable_image_extraction=disable_image_extraction,
             )
-            if result.get("error"):
+            if not result["success"]:
                 results.append({"filename": file.filename, "status": "error", "error": result['error']})
                 continue
 
-            meta = extract_metadata_from_markdown(Path(result["parsed_md"]))
-            paper_id = result["file_id"]
-            db_add_paper({
-                "file_id": paper_id,
-                **meta,
-                "parsed_path": str(result["parsed_md"]),
-                "page_count": result.get("page_count", 0),
-                "filename": file.filename,
-            })
+            md_path = result["parsed_md"]
+            meta_path = result.get("parsed_meta")
 
+            # 提取元数据
+            struct = extract_metadata_from_markdown(md_path)
+            title = struct.get("title") or extract_title_from_meta(meta_path) or file.filename
+
+            # 分块
             chunks = chunk_paper(
-                result["parsed_md"],
-                paper_id=paper_id,
-                paper_title=meta.get("title", ""),
-                authors=meta.get("authors", []),
-                sections=meta.get("sections", []),
+                md_path,
+                paper_id=result["file_id"],
+                paper_title=title,
+                authors=struct.get("authors", []),
+                sections=struct.get("sections", []),
             )
+            logger.info("Chunked paper %s into %d chunks", result["file_id"], len(chunks))
 
-            points = await build_points(paper_id, chunks, meta)
-            if points:
-                await insert_points(points)
+            # Embedding
+            if chunks:
+                chunk_texts = [c.text for c in chunks]
+                vecs = encode(chunk_texts)
+                dense = [v["dense"] for v in vecs]
+                sparse = [v["sparse"] for v in vecs]
+                upsert_chunks(chunks, dense, sparse)
+
+            # 写元数据
+            paper_meta = {
+                "file_id": result["file_id"],
+                "title": title,
+                "authors": struct.get("authors", []),
+                "abstract": struct.get("abstract", ""),
+                "year": None,
+                "journal": "",
+                "doi": "",
+                "tags": [],
+                "filename": file.filename,
+                "file_path": str(dest_path),
+                "parsed_path": str(md_path),
+                "page_count": 0,
+            }
+            db_add_paper(paper_meta)
 
             results.append({
-                "paper_id": paper_id,
+                "paper_id": result["file_id"],
                 "filename": file.filename,
-                "title": meta.get("title", ""),
-                "page_count": result.get("page_count", 0),
-                "sections": len(meta.get("sections", [])),
+                "title": title,
                 "chunks": len(chunks),
                 "status": "ok",
             })
         except Exception as e:
+            logger.exception("Upload failed for %s", file.filename)
             results.append({"filename": file.filename, "status": "error", "error": str(e)})
 
     return {"results": results, "total": len(results)}
-    db_add_paper(paper_meta)
-
-    return {
-        "paper_id": result["file_id"],
-        "title": title,
-        "chunks": len(chunks),
-        "status": "indexed",
-    }
 
 
 @router.get("/papers")
