@@ -89,20 +89,21 @@ async def upload_paper(
                 results.append({"filename": file.filename, "status": "error", "error": result['error']})
                 continue
 
+            meta = extract_metadata_from_markdown(Path(result["parsed_md"]))
+            paper_id = result["file_id"]
+            save_paper_metadata(paper_id, {
+                **meta,
+                "parsed_path": str(result["parsed_md"]),
+                "page_count": result.get("page_count", 0),
+            })
+
             chunks = chunk_paper(
-                result["markdown_path"],
+                result["parsed_md"],
                 paper_id=paper_id,
                 paper_title=meta.get("title", ""),
                 authors=meta.get("authors", []),
                 sections=meta.get("sections", []),
             )
-            meta = extract_metadata_from_markdown(Path(result["markdown_path"]))
-            paper_id = meta["id"]
-            save_paper_metadata(paper_id, {
-                **meta,
-                "parsed_path": result["markdown_path"],
-                "page_count": result.get("page_count", 0),
-            })
 
             points = await build_points(paper_id, chunks, meta)
             if points:
