@@ -89,7 +89,13 @@ async def upload_paper(
                 results.append({"filename": file.filename, "status": "error", "error": result['error']})
                 continue
 
-            chunks, sections = await chunk_paper(dest_path, result["markdown_path"])
+            chunks = chunk_paper(
+                result["markdown_path"],
+                paper_id=paper_id,
+                paper_title=meta.get("title", ""),
+                authors=meta.get("authors", []),
+                sections=meta.get("sections", []),
+            )
             meta = extract_metadata_from_markdown(Path(result["markdown_path"]))
             paper_id = meta["id"]
             save_paper_metadata(paper_id, {
@@ -107,7 +113,7 @@ async def upload_paper(
                 "filename": file.filename,
                 "title": meta.get("title", ""),
                 "page_count": result.get("page_count", 0),
-                "sections": len(sections),
+                "sections": len(meta.get("sections", [])),
                 "chunks": len(chunks),
                 "status": "ok",
             })
