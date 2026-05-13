@@ -90,7 +90,7 @@ async def upload_paper(
                 continue
 
             chunks, sections = await chunk_paper(dest_path, result["markdown_path"])
-            meta = extract_metadata(result["markdown_path"], str(dest_path))
+            meta = extract_metadata_from_markdown(Path(result["markdown_path"]))
             paper_id = meta["id"]
             save_paper_metadata(paper_id, {
                 **meta,
