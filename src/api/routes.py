@@ -67,67 +67,54 @@ class TagUpdate(BaseModel):
 
 @router.post("/papers/upload")
 async def upload_paper(
-    file: UploadFile = File(...),
+    files: list[UploadFile] = File(...),
     force_ocr: bool = Form(False),
     use_llm: bool = Form(False),
     page_range: str = Form(""),
     disable_image_extraction: bool = Form(False),
 ):
-    """上传并索引一篇论文。可通过 form 字段控制 Marker 参数."""
-    # 保存上传文件
-    dest_path = await copy_upload_to_papers(file)
+    """上传并索引一篇或多篇论文."""
+    results = []
+    for file in files:
+        try:
+            dest_path = await copy_upload_to_papers(file)
+            result = await convert_paper(
+                dest_path,
+                force_ocr=force_ocr,
+                use_llm=use_llm,
+                page_range=page_range if page_range else None,
+                disable_image_extraction=disable_image_extraction,
+            )
+            if result.get("error"):
+                results.append({"filename": file.filename, "status": "error", "error": result['error']})
+                continue
 
-    # 用 Marker 解析
-    result = await convert_paper(
-        dest_path,
-        force_ocr=force_ocr,
-        use_llm=use_llm,
-        page_range=page_range if page_range else None,
-        disable_image_extraction=disable_image_extraction,
-    )
-    if not result["success"]:
-        raise HTTPException(500, f"Parsing failed: {result['error']}")
+            chunks, sections = await chunk_paper(dest_path, result["markdown_path"])
+            meta = extract_metadata(result["markdown_path"], str(dest_path))
+            paper_id = meta["id"]
+            save_paper_metadata(paper_id, {
+                **meta,
+                "parsed_path": result["markdown_path"],
+                "page_count": result.get("page_count", 0),
+            })
 
-    md_path = result["parsed_md"]
-    meta_path = result.get("parsed_meta")
+            points = await build_points(paper_id, chunks, meta)
+            if points:
+                await insert_points(points)
 
-    # 提取元数据
-    struct = extract_metadata_from_markdown(md_path)
-    title = struct.get("title") or extract_title_from_meta(meta_path) or file.filename
+            results.append({
+                "paper_id": paper_id,
+                "filename": file.filename,
+                "title": meta.get("title", ""),
+                "page_count": result.get("page_count", 0),
+                "sections": len(sections),
+                "chunks": len(chunks),
+                "status": "ok",
+            })
+        except Exception as e:
+            results.append({"filename": file.filename, "status": "error", "error": str(e)})
 
-    # 分块
-    chunks = chunk_paper(
-        md_path,
-        paper_id=result["file_id"],
-        paper_title=title,
-        authors=struct.get("authors", []),
-        sections=struct.get("sections", []),
-    )
-    logger.info("Chunked paper %s into %d chunks", result["file_id"], len(chunks))
-
-    # Embedding
-    if chunks:
-        chunk_texts = [c.text for c in chunks]
-        vecs = encode(chunk_texts)
-        dense = [v["dense"] for v in vecs]
-        sparse = [v["sparse"] for v in vecs]
-        upsert_chunks(chunks, dense, sparse)
-
-    # 写元数据
-    paper_meta = {
-        "file_id": result["file_id"],
-        "title": title,
-        "authors": struct.get("authors", []),
-        "abstract": struct.get("abstract", ""),
-        "year": None,
-        "journal": "",
-        "doi": "",
-        "tags": [],
-        "filename": file.filename,
-        "file_path": str(dest_path),
-        "parsed_path": str(md_path),
-        "page_count": 0,
-    }
+    return {"results": results, "total": len(results)}
     db_add_paper(paper_meta)
 
     return {

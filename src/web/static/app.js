@@ -173,7 +173,7 @@ document.getElementById('upload-btn').addEventListener('click', () => {
 document.getElementById('file-input').addEventListener('change', async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    await uploadFile(file);
+    await uploadFiles(Array.from(e.target.files));
 });
 
 document.getElementById('upload-drop').addEventListener('click', () => {
@@ -191,18 +191,20 @@ document.getElementById('upload-drop').addEventListener('drop', async (e) => {
     e.preventDefault();
     e.currentTarget.style.borderColor = '';
     const file = e.dataTransfer.files[0];
-    if (file) await uploadFile(file);
+    if (file) await uploadFiles(Array.from(e.target.files));
 });
 
-async function uploadFile(file) {
+async function uploadFiles(files) {
     const status = document.getElementById('upload-status');
     const progress = document.getElementById('upload-progress');
 
-    status.textContent = `Uploading: ${file.name}...`;
+    status.textContent = `Uploading ${files.length} file(s)...`;
     progress.style.display = 'block';
 
     const form = new FormData();
-    form.append('file', file);
+    for (const file of files) {
+        form.append('files', file);
+    }
     if (document.getElementById('opt-force-ocr').checked) form.append('force_ocr', 'true');
     if (document.getElementById('opt-use-llm').checked) form.append('use_llm', 'true');
     if (document.getElementById('opt-no-images').checked) form.append('disable_image_extraction', 'true');
