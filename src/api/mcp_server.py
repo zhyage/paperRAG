@@ -24,8 +24,8 @@ mcp = FastMCP(
     "paper-rag",
     host=HOST,
     port=PORT,
-    sse_path=MCP_SSE_PATH,
-    message_path="/mcp/messages",
+    sse_path="/sse",
+    message_path="/messages/",
 )
 
 
