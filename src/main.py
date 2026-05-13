@@ -77,7 +77,7 @@ def mount_mcp(app: FastAPI):
 
         mcp_app = mcp_instance.sse_app()
         app.mount("/mcp", mcp_app)
-        logger.info("MCP SSE endpoint mounted at /mcp", MCP_SSE_PATH)
+        logger.info("MCP SSE endpoint mounted at /mcp")
     except Exception as e:
         logger.warning("Failed to mount MCP: %s", e)
 
