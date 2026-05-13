@@ -165,34 +165,40 @@ async function downloadMarkdownZip(id) {
 document.getElementById('lib-search')?.addEventListener('input', () => loadLibrary(1));
 document.getElementById('lib-refresh')?.addEventListener('click', () => loadLibrary(libPage));
 
-// ── Upload ────────────────────────────────────────────────
-document.getElementById('upload-btn').addEventListener('click', () => {
-    document.getElementById('file-input').click();
-});
+// ── Upload Queue ────────────────────────────────────────────
+let uploadQueue = [];
 
-document.getElementById('file-input').addEventListener('change', async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    await uploadFiles(Array.from(e.target.files));
-});
+function renderQueue() {
+    const list = document.getElementById('queue-list');
+    const count = document.getElementById('queue-count');
+    const queueDiv = document.getElementById('upload-queue');
+    count.textContent = uploadQueue.length;
+    list.innerHTML = uploadQueue.map((f, i) =>
+        '<li>📄 ' + f.name + ' <span style="color:#888;font-size:0.8em">(' + (f.size/1024).toFixed(0) + ' KB)</span>' +
+        ' <button onclick="removeFromQueue(' + i + ')" style="margin-left:8px;cursor:pointer;color:red;">✕</button></li>'
+    ).join('');
+    queueDiv.style.display = uploadQueue.length > 0 ? 'block' : 'none';
+}
 
-document.getElementById('upload-drop').addEventListener('click', () => {
-    document.getElementById('file-input').click();
-});
+function addToQueue(files) {
+    for (const f of files) {
+        if (!uploadQueue.some(q => q.name === f.name && q.size === f.size)) {
+            uploadQueue.push(f);
+        }
+    }
+    renderQueue();
+}
 
-document.getElementById('upload-drop').addEventListener('dragover', (e) => {
-    e.preventDefault();
-    e.currentTarget.style.borderColor = '#4c6ef5';
-});
-document.getElementById('upload-drop').addEventListener('dragleave', (e) => {
-    e.currentTarget.style.borderColor = '';
-});
-document.getElementById('upload-drop').addEventListener('drop', async (e) => {
-    e.preventDefault();
-    e.currentTarget.style.borderColor = '';
-    const file = e.dataTransfer.files[0];
-    if (file) await uploadFiles(Array.from(e.target.files));
-});
+function removeFromQueue(index) {
+    uploadQueue.splice(index, 1);
+    renderQueue();
+}
+
+function clearQueue() {
+    uploadQueue = [];
+    renderQueue();
+    document.getElementById('upload-status').textContent = '';
+}
 
 async function uploadFiles(files) {
     const status = document.getElementById('upload-status');
@@ -208,24 +214,64 @@ async function uploadFiles(files) {
     if (document.getElementById('opt-force-ocr').checked) form.append('force_ocr', 'true');
     if (document.getElementById('opt-use-llm').checked) form.append('use_llm', 'true');
     if (document.getElementById('opt-no-images').checked) form.append('disable_image_extraction', 'true');
-    const pr = document.getElementById('opt-page-range').value.trim();
-    if (pr) form.append('page_range', pr);
 
     try {
-        const res = await fetch(`${API}/papers/upload`, { method: 'POST', body: form });
-        const data = await res.json();
+        const resp = await fetch(`${API}/papers/upload`, { method: 'POST', body: form });
+        if (!resp.ok) throw new Error(await resp.text());
+        const data = await resp.json();
+        const ok = data.results.filter(r => r.status === 'ok').length;
+        const err = data.results.filter(r => r.status === 'error').length;
+        status.textContent = `\u2705 Uploaded: ${ok} ok` + (err > 0 ? `, ${err} failed` : '');
+        loadLibrary(1);
+    } catch (e) {
+        status.textContent = `\u274c Upload failed`;
+        console.error(e);
+    } finally {
         progress.style.display = 'none';
-        if (res.ok) {
-            status.innerHTML = `✅ Indexed! <b>${esc(data.title)}</b> — ${data.chunks} chunks.`;
-        } else {
-            status.textContent = `❌ Failed: ${data.detail || 'Unknown error'}`;
-        }
-    } catch (err) {
-        progress.style.display = 'none';
-        status.textContent = `❌ Network error: ${err.message}`;
     }
 }
 
+
+
+// ── Upload ────────────────────────────────────────────────
+document.getElementById('upload-btn').addEventListener('click', () => {
+    document.getElementById('file-input').click();
+});
+
+document.getElementById('file-input').addEventListener('change', (e) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    addToQueue(Array.from(files));
+    e.target.value = '';
+});
+
+document.getElementById('start-upload-btn')?.addEventListener('click', async () => {
+    if (uploadQueue.length === 0) return;
+    await uploadFiles([...uploadQueue]);
+    uploadQueue = [];
+    renderQueue();
+});
+
+document.getElementById('clear-queue-btn')?.addEventListener('click', clearQueue);
+
+document.getElementById('upload-drop').addEventListener('click', () => {
+    document.getElementById('file-input').click();
+});
+
+document.getElementById('upload-drop').addEventListener('dragover', (e) => {
+    e.preventDefault();
+    e.currentTarget.style.borderColor = '#4c6ef5';
+});
+document.getElementById('upload-drop').addEventListener('dragleave', (e) => {
+    e.currentTarget.style.borderColor = '';
+});
+document.getElementById('upload-drop').addEventListener('drop', (e) => {
+    e.preventDefault();
+    e.currentTarget.style.borderColor = '';
+    const files = e.dataTransfer.files;
+    if (!files || files.length === 0) return;
+    addToQueue(Array.from(files));
+});
 // ── Status ────────────────────────────────────────────────
 async function loadStatus() {
     const res = await fetch(`${API}/index/status`);

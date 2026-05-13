@@ -75,9 +75,17 @@
             <!-- Upload View -->
             <section id="view-upload" class="view">
                 <div class="upload-area" id="upload-drop">
-                    <p>📄 Drop PDF/DOCX/MD file here or click to select</p>
+                    <p>📄 Pick PDF/DOCX/MD files to queue, then click Start Upload</p>
                     <input type="file" id="file-input" accept=".pdf,.docx,.md,.txt" multiple hidden>
-                    <button id="upload-btn">Select File</button>
+                    <button id="upload-btn">➕ Add Files</button>
+                </div>
+                <div id="upload-queue" style="display:none;">
+                    <h4>Pending Files (<span id="queue-count">0</span>)</h4>
+                    <ul id="queue-list"></ul>
+                    <div style="margin-top:8px;">
+                        <button id="start-upload-btn" class="action-btn view" style="font-size:1rem;padding:8px 20px;">🚀 Start Upload</button>
+                        <button id="clear-queue-btn" class="action-btn delete" style="font-size:1rem;padding:8px 20px;">Clear Queue</button>
+                    </div>
                 </div>
                 <div class="upload-options">
                     <h4>Marker Options</h4>
@@ -89,17 +97,8 @@
                 <div id="upload-status"></div>
                 <div id="upload-progress" style="display:none;">
                     <div class="progress-bar"><div class="progress-fill"></div></div>
-                    <p>Indexing paper... this may take a minute.</p>
+                    <p>Indexing papers... this may take a few minutes.</p>
                 </div>
-            </section>
-
-            <!-- Status View -->
-            <section id="view-status" class="view">
-                <div class="status-card">
-                    <h3>Index Status</h3>
-                    <div id="status-content">Loading...</div>
-                </div>
-                <button id="rebuild-btn" class="danger">⚠️ Rebuild Entire Index</button>
             </section>
         </main>
     </div>
