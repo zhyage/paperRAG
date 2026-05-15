@@ -100,6 +100,28 @@
                     <p>Indexing papers... this may take a few minutes.</p>
                 </div>
             </section>
+
+            <!-- Status View -->
+            <section id="view-status" class="view">
+                <div id="status-content"></div>
+                <div style="margin-top: 20px; display: flex; gap: 12px;">
+                    <button id="export-btn" class="action-btn view" style="font-size:1rem;padding:8px 20px;">📦 Export All Data</button>
+                    <button id="import-btn" class="action-btn view" style="font-size:1rem;padding:8px 20px;">📥 Import Data</button>
+                    <button id="reset-btn" class="action-btn delete" style="font-size:1rem;padding:8px 20px;">🗑 Reset / Clear All</button>
+                    <input type="file" id="import-file-input" accept=".tar.gz" hidden>
+                </div>
+                <div id="import-status" style="margin-top:8px;"></div>
+                <!-- Reset Confirm Dialog -->
+                <div id="reset-dialog" style="display:none; margin-top: 16px; padding: 16px; border: 2px solid red; border-radius: 8px; background: #fff5f5;">
+                    <h4 style="color: red;">⚠️ This will delete ALL papers, vectors, and metadata.</h4>
+                    <p>Consider exporting first: <button id="reset-dialog-export-btn">📦 Download Export</button></p>
+                    <label>Type <code>DELETE_ALL_MY_PAPERS</code> to confirm:</label>
+                    <input type="text" id="reset-confirm-input" placeholder="DELETE_ALL_MY_PAPERS" style="width:300px;padding:6px;margin-left:8px;">
+                    <button id="reset-confirm-btn" class="action-btn delete" disabled>Yes, Delete Everything</button>
+                    <button id="reset-cancel-btn" class="action-btn">Cancel</button>
+                    <div id="reset-status" style="margin-top:8px;"></div>
+                </div>
+            </section>
         </main>
     </div>
     <script src="/static/app.js"></script>

@@ -141,6 +141,9 @@ MCP tools: `search_papers`, `get_paper_detail`, `get_paper_fulltext`, `list_pape
 | POST   | `/api/ask/stream` | Streaming RAG answer |
 | GET    | `/api/index/status` | Index statistics |
 | POST   | `/api/index/rebuild` | Rebuild all indexes |
+| GET    | `/api/export` | Export all data as tar.gz |
+| POST   | `/api/import` | Import data from tar.gz (no re-parsing) |
+| POST   | `/api/reset` | Clear all data (requires confirm token) |
 
 ## Configuration
 

@@ -36,6 +36,13 @@ from ..db.metadata import (
     update_paper_tags as db_update_tags,
     get_all_paper_ids,
 )
+from .export_import import (
+    build_export_tarball,
+    restore_from_tarball,
+    get_reset_dry_run_info,
+    execute_reset,
+    CONFIRM_TOKEN,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -351,3 +358,48 @@ async def rebuild_index():
             upsert_chunks(chunks, dense, sparse)
         indexed += 1
     return {"status": "rebuilt", "papers_indexed": indexed}
+
+
+# ── 数据迁移 ──────────────────────────────────────────────
+
+@router.get("/export")
+async def export_data():
+    """导出全部论文、向量、元数据为 tar.gz 包。"""
+    import time
+    buf = await build_export_tarball()
+    ts = time.strftime("%Y%m%d-%H%M%S", time.gmtime())
+    filename = f"paper-rag-export-{ts}.tar.gz"
+    return StreamingResponse(
+        iter([buf.read()]),
+        media_type="application/gzip",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.post("/import")
+async def import_data(file: UploadFile = File(...)):
+    """从导出的 tar.gz 包恢复数据（不走 Marker，不走 embedding）。"""
+    if not file.filename or not file.filename.endswith(".tar.gz"):
+        raise HTTPException(400, "Please upload a .tar.gz export file")
+    result = await restore_from_tarball(file)
+    return result
+
+
+class ResetRequest(BaseModel):
+    confirm: str = ""
+
+
+@router.post("/reset")
+async def reset_data(req: ResetRequest):
+    """清空全部论文数据。需要确认令牌。"""
+    if req.confirm != CONFIRM_TOKEN:
+        info = get_reset_dry_run_info()
+        raise HTTPException(
+            400,
+            detail={
+                "error": f"Must confirm reset. Send confirm='{CONFIRM_TOKEN}'.",
+                "hint": "Consider exporting your data first: GET /api/export",
+                "would_delete": info,
+            },
+        )
+    return execute_reset()

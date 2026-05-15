@@ -293,6 +293,87 @@ document.getElementById('rebuild-btn')?.addEventListener('click', async () => {
     loadStatus();
 });
 
+// ── Export ─────────────────────────────────────────────────
+document.getElementById('export-btn')?.addEventListener('click', () => {
+    window.location.href = `${API}/export`;
+});
+
+// ── Import ─────────────────────────────────────────────────
+const importBtn = document.getElementById('import-btn');
+const importFileInput = document.getElementById('import-file-input');
+const importStatus = document.getElementById('import-status');
+
+importBtn?.addEventListener('click', () => importFileInput.click());
+
+importFileInput?.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    importStatus.textContent = `Importing ${file.name}...`;
+    const form = new FormData();
+    form.append('file', file);
+    try {
+        const resp = await fetch(`${API}/import`, { method: 'POST', body: form });
+        const data = await resp.json();
+        if (resp.ok) {
+            importStatus.textContent = `Imported: ${data.papers_imported} papers, ${data.chunks_upserted} chunks.`;
+            loadLibrary(1);
+        } else {
+            importStatus.textContent = `Error: ${data.detail || JSON.stringify(data)}`;
+        }
+    } catch (err) {
+        importStatus.textContent = 'Import failed: ' + err.message;
+    }
+    e.target.value = '';
+});
+
+// ── Reset ──────────────────────────────────────────────────
+const resetBtn = document.getElementById('reset-btn');
+const resetDialog = document.getElementById('reset-dialog');
+const resetConfirmInput = document.getElementById('reset-confirm-input');
+const resetConfirmBtn = document.getElementById('reset-confirm-btn');
+const cancelBtn = document.getElementById('reset-cancel-btn');
+const resetStatus = document.getElementById('reset-status');
+
+resetBtn?.addEventListener('click', () => {
+    resetDialog.style.display = 'block';
+    resetConfirmInput.value = '';
+    resetConfirmBtn.disabled = true;
+    resetStatus.textContent = '';
+});
+
+cancelBtn?.addEventListener('click', () => {
+    resetDialog.style.display = 'none';
+});
+
+resetConfirmInput?.addEventListener('input', () => {
+    resetConfirmBtn.disabled = resetConfirmInput.value !== 'DELETE_ALL_MY_PAPERS';
+});
+
+document.getElementById('reset-dialog-export-btn')?.addEventListener('click', () => {
+    window.location.href = `${API}/export`;
+});
+
+resetConfirmBtn?.addEventListener('click', async () => {
+    resetStatus.textContent = 'Deleting...';
+    try {
+        const resp = await fetch(`${API}/reset`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ confirm: 'DELETE_ALL_MY_PAPERS' }),
+        });
+        const data = await resp.json();
+        if (resp.ok) {
+            resetStatus.textContent = `Done. All papers removed.`;
+            resetDialog.style.display = 'none';
+            loadLibrary(1);
+        } else {
+            resetStatus.textContent = `Error: ${data.detail?.error || JSON.stringify(data)}`;
+        }
+    } catch (e) {
+        resetStatus.textContent = 'Request failed: ' + e.message;
+    }
+});
+
 // ── Helpers ───────────────────────────────────────────────
 function esc(s) {
     if (!s) return '';
